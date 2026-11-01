@@ -1,0 +1,38 @@
+{
+  "name": "academic-tikz",
+  "type": "merged",
+  "merged_on": "2026-10-29",
+  "merged_from": [
+    {
+      "name": "tikz-diagrams",
+      "repository": "Patrick-Healy/tikz-diagrams-skill",
+      "downloaded_on": "2026-10-19",
+      "contributes": "compile/render/visual-QA scripts, economics and causal diagram patterns, animation workflow, fixtures"
+    },
+    {
+      "name": "tikz-figure-skill",
+      "repository": "haiyichen001/tikz-figure-skill",
+      "downloaded_on": "2026-10-19",
+      "contributes": "187 verified TikZ templates, 15-check inspector, collision detection and layout references"
+    },
+    {
+      "name": "tikz-scientific-figures",
+      "repository": "PM-Shawn/tikz-scientific-figures",
+      "downloaded_on": "2026-10-19",
+      "contributes": "PGFPlots and discipline recipes, publication preamble, SVG export and Method Draw editor"
+    }
+  ],
+  "renamed_files": {
+    "README.md (tikz-figure-skill)": "README-templates.md",
+    "README.md (tikz-scientific-figures)": "README-recipes.md",
+    "agents/openai.yaml (tikz-diagrams)": "agents/openai-diagrams.yaml",
+    "agents/openai.yaml (tikz-scientific-figures)": "agents/openai-scientific-figures.yaml"
+  },
+  "deduplicated_files": [
+    "SKILL.md",
+    "INSTALLATION.json",
+    "LOCAL_RUNTIME.md",
+    "scripts/compile-local.ps1",
+    "scripts/run-local-python.ps1"
+  ]
+}
