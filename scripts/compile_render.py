@@ -10,7 +10,12 @@ from pathlib import Path
 
 
 def run(cmd: list[str], cwd: Path) -> None:
-    proc = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+    try:
+        proc = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+    except FileNotFoundError:
+        print(f"ERROR: command not found: {cmd[0]}", file=sys.stderr)
+        print("  LaTeX engine and pdftoppm (poppler) must be on PATH; see scripts/check_env.sh.", file=sys.stderr)
+        raise SystemExit(127)
     if proc.returncode != 0:
         print(proc.stdout[-4000:])
         print(proc.stderr[-4000:], file=sys.stderr)
@@ -89,7 +94,10 @@ def main(argv: list[str]) -> int:
 
     cwd = tex.parent
     stem = tex.stem
-    run([args.engine, "-interaction=nonstopmode", "-halt-on-error", tex.name], cwd)
+    engine_cmd = [args.engine, "-no-shell-escape", "-interaction=nonstopmode", "-halt-on-error"]
+    run(engine_cmd + [tex.name], cwd)
+    # Second pass so cross-references, labels and overlays settle.
+    run(engine_cmd + [tex.name], cwd)
 
     pdf = cwd / f"{stem}.pdf"
     if not pdf.exists():
