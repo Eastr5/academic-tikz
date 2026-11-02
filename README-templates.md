@@ -11,10 +11,10 @@ User describes diagram
    Full match → use directly
    Partial → adapt, stitch, merge
    ↓
-② Compile (pdflatex)
+② Compile (xelatex)
    ↓
 ③ Inspect (one command, 15 checks, all WARN)
-   python references/inspect.py output.tex output.pdf
+   python references/quality_inspect.py output.tex output.pdf
    ↓
 ④ Model judges each WARN:
    Template-inherited? → SKIP (design intent)
