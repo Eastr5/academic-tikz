@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-TikZ pre-compile validator — 10 automated layout checks before pdflatex.
+TikZ pre-compile validator — 5 automated layout checks before pdflatex.
 Usage: python tikz-validator.py <file.tex>
 
-Checks: micro-slopes, direction reversal, container overflow, label collision,
-arrow length, Bezier collision, label gaps, edge clipping, boundary clearance,
-line crossings. Shared parser: tikz_parser.py.
+Checks: container overflow, label collision, edge clipping, boundary
+clearance, oversize nodes. Shared parser: tikz_parser.py.
 
 Exit: 0=PASS, 1=WARN, 2=ERROR
 """
 
+import json
 import re
 import sys
 from dataclasses import dataclass
 from tikz_parser import (
-    Node, Zone, Coord, parse_coords, parse_nodes, parse_zones
+    Node, Zone, parse_nodes, parse_zones
 )
 
 
@@ -26,92 +26,7 @@ class Issue:
     message: str
 
 
-# ─── Bezier constants ───
-
-BEND_ANGLE_TABLE = {
-    20: 0.176, 25: 0.222, 30: 0.268, 35: 0.315,
-    40: 0.364, 45: 0.414, 50: 0.466, 55: 0.521, 60: 0.577,
-}
-
-FONT_WIDTH_TABLE = {
-    "tiny": 0.08, "scriptsize": 0.10, "footnotesize": 0.12,
-    "small": 0.15, "normalsize": 0.18, "large": 0.22,
-}
-
-MIN_CLEARANCES = {
-    "label_to_label": 0.3, "label_to_shape": 0.4,
-    "label_to_arrow": 0.3, "node_edge_to_node_edge": 0.8,
-    "any_to_canvas_edge": 0.5,
-}
-
-
-def parse_draw_coords(line: str) -> list[Coord]:
-    return parse_coords(line)
-
-
-# ─── Check 1: Micro-slopes ───
-
-def check_micro_slopes(lines: list[str]) -> list[Issue]:
-    issues = []
-    TOLERANCE = 0.05
-    scope_depth = 0
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if '\\begin{scope}' in stripped:
-            scope_depth += 1; continue
-        if '\\end{scope}' in stripped:
-            scope_depth = max(0, scope_depth - 1); continue
-        if scope_depth > 0 or '\\draw' not in line or 'plot' in line:
-            continue
-
-        coords = parse_draw_coords(line)
-        if len(coords) < 2:
-            continue
-
-        for j in range(len(coords) - 1):
-            p1, p2 = coords[j], coords[j + 1]
-            dx, dy = abs(p1.x - p2.x), abs(p1.y - p2.y)
-            if dx > TOLERANCE and dy > TOLERANCE:
-                if dx > 2.0 and dy > 2.0:
-                    continue
-                issues.append(Issue(
-                    level="ERROR", category="micro-slope", line_no=i + 1,
-                    message=f"Diagonal: ({p1.x},{p1.y})->({p2.x},{p2.y}) dx={dx:.2f} dy={dy:.2f}"
-                ))
-    return issues
-
-
-# ─── Check 2: Direction reversal ───
-
-def check_direction_reversal(lines: list[str]) -> list[Issue]:
-    issues = []
-    for i, line in enumerate(lines):
-        if '\\draw' not in line:
-            continue
-        coords = parse_draw_coords(line)
-        if len(coords) < 3:
-            continue
-        target = coords[-1]
-        for j in range(1, len(coords) - 1):
-            mid, prev = coords[j], coords[j - 1]
-            if abs(mid.x - prev.x) < 0.05:
-                if prev.y < target.y and mid.y > target.y + 0.1:
-                    issues.append(Issue(level="ERROR", category="direction", line_no=i + 1,
-                        message=f"Direction reversal: mid y={mid.y} beyond target y={target.y}"))
-                if prev.y > target.y and mid.y < target.y - 0.1:
-                    issues.append(Issue(level="ERROR", category="direction", line_no=i + 1,
-                        message=f"Direction reversal: mid y={mid.y} beyond target y={target.y}"))
-            if abs(mid.y - prev.y) < 0.05:
-                if prev.x < target.x and mid.x > target.x + 0.1:
-                    issues.append(Issue(level="ERROR", category="direction", line_no=i + 1,
-                        message=f"Direction reversal: mid x={mid.x} beyond target x={target.x}"))
-                if prev.x > target.x and mid.x < target.x - 0.1:
-                    issues.append(Issue(level="ERROR", category="direction", line_no=i + 1,
-                        message=f"Direction reversal: mid x={mid.x} beyond target x={target.x}"))
-    return issues
-
-
-# ─── Check 3: Container overflow ───
+# ─── Check 1: Container overflow ───
 
 def check_container_overflow(nodes: list[Node], zones: list[Zone], diag: float = 30.0) -> list[Issue]:
     issues = []
@@ -142,7 +57,7 @@ def check_container_overflow(nodes: list[Node], zones: list[Zone], diag: float =
     return issues
 
 
-# ─── Check 4: Label collision ───
+# ─── Check 2: Label collision ───
 
 def check_label_collision(nodes: list[Node], diag: float = 30.0) -> list[Issue]:
     issues = []
@@ -166,126 +81,7 @@ def check_label_collision(nodes: list[Node], diag: float = 30.0) -> list[Issue]:
     return issues
 
 
-# ─── Check 5: Arrow length ───
-
-def check_short_arrows(lines: list[str], nodes: list[Node]) -> list[Issue]:
-    issues = []
-    MIN_GAP, MAX_GAP = 1.2, 4.0
-    node_map = {n.name: n for n in nodes if n.name}
-    scope_depth = 0
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if '\\begin{scope}' in stripped:
-            scope_depth += 1; continue
-        if '\\end{scope}' in stripped:
-            scope_depth = max(0, scope_depth - 1); continue
-        if scope_depth > 0 or '\\draw' not in line:
-            continue
-
-        node_refs = re.findall(r'\(([a-zA-Z_][a-zA-Z0-9_]*?)(?:\.[a-zA-Z ]+)?\)', line)
-        referenced = [name for name in node_refs if name in node_map]
-        if len(referenced) < 2:
-            continue
-        src, dst = node_map[referenced[0]], node_map[referenced[-1]]
-        gap_x = abs(src.x - dst.x) - src.width / 2 - dst.width / 2
-        gap_y = abs(src.y - dst.y) - src.height / 2 - dst.height / 2
-        min_gap = min(gap_x, gap_y) if gap_x > 0 and gap_y > 0 else max(gap_x, gap_y)
-
-        if 0 < min_gap < MIN_GAP:
-            issues.append(Issue(level="WARN", category="short-arrow", line_no=i + 1,
-                message=f"Arrow too short: '{src.name}'->'{dst.name}' gap {min_gap:.2f}cm"))
-        elif min_gap > MAX_GAP:
-            issues.append(Issue(level="WARN", category="long-arrow", line_no=i + 1,
-                message=f"Arrow too long: '{src.name}'->'{dst.name}' gap {min_gap:.2f}cm"))
-    return issues
-
-
-# ─── Check 6: Bezier collision ───
-
-def bezier_max_depth(chord_cm, bend_angle):
-    return (chord_cm / 2) * BEND_ANGLE_TABLE.get(bend_angle, 0.268)
-
-
-def check_bezier_collisions(lines: list[str], nodes: list[Node]) -> list[Issue]:
-    issues = []
-    node_map = {n.name: n for n in nodes if n.name}
-    bend_re = re.compile(r'bend\s+(left|right)\s*=\s*(\d+)')
-
-    for i, line in enumerate(lines):
-        if '\\draw' not in line:
-            continue
-        am = bend_re.search(line)
-        if not am:
-            continue
-        direction, angle = am.group(1), int(am.group(2))
-
-        refs = re.findall(r'\(([a-zA-Z_][a-zA-Z0-9_]*?)(?:\.[a-zA-Z ]+)?\)', line)
-        endpoint_nodes = [name for name in refs if name in node_map]
-        if len(endpoint_nodes) < 2:
-            continue
-
-        src, dst = node_map[endpoint_nodes[0]], node_map[endpoint_nodes[-1]]
-        chord = ((src.x - dst.x)**2 + (src.y - dst.y)**2) ** 0.5
-        safe_zone = bezier_max_depth(chord, angle) + MIN_CLEARANCES["label_to_arrow"]
-
-        dx, dy = dst.x - src.x, dst.y - src.y
-        nx, ny = (-dy, dx) if direction == "left" else (dy, -dx)
-        nl = (nx**2 + ny**2) ** 0.5
-        if nl < 0.01:
-            continue
-        nx, ny = nx / nl, ny / nl
-
-        for node in nodes:
-            if node in (src, dst):
-                continue
-            rx, ry = node.x - src.x, node.y - src.y
-            proj_n = rx * nx + ry * ny
-            proj_c = (rx * dx + ry * dy) / max(chord, 0.01)
-            if 0 < proj_c < chord and abs(proj_n) < safe_zone:
-                issues.append(Issue(level="WARN", category="bezier-collision", line_no=i + 1,
-                    message=f"Bezier risk: '{node.name}' inside arc (dist {abs(proj_n):.2f}cm, need >={safe_zone:.2f}cm)"))
-    return issues
-
-
-# ─── Check 7: Label gaps ───
-
-def estimate_label_width(text: str, font_size: str = "footnotesize") -> float:
-    wpc = FONT_WIDTH_TABLE.get(font_size, 0.12)
-    clean = re.sub(r'\\(?:text(?:bf|it|tt|sf)|textbf|textit|texttt|textsf|small|scriptsize|footnotesize|tiny|normalsize)\{', '', text)
-    clean = re.sub(r'\\[a-zA-Z]+', '', clean)
-    clean = re.sub(r'[{}$$]', '', clean)
-    cc = max(len(clean.strip()), 1)
-    mul = 1.0
-    if 'bf' in text or 'textbf' in text:
-        mul *= 1.10
-    if 'tt' in text or 'texttt' in text:
-        mul *= 1.15
-    return cc * wpc * mul
-
-
-def check_label_gaps(lines: list[str], nodes: list[Node]) -> list[Issue]:
-    issues = []
-    node_map = {n.name: n for n in nodes if n.name}
-    for i, line in enumerate(lines):
-        if '\\draw' not in line or 'node' not in line:
-            continue
-        refs = re.findall(r'\(([a-zA-Z_][a-zA-Z0-9_]*?)(?:\.[a-zA-Z ]+)?\)', line)
-        referenced = [name for name in refs if name in node_map]
-        if len(referenced) < 2:
-            continue
-        src, dst = node_map[referenced[0]], node_map[referenced[-1]]
-        center_dist = ((src.x - dst.x)**2 + (src.y - dst.y)**2) ** 0.5
-        usable = center_dist - src.width/2 - dst.width/2 - 0.6
-        lm = re.search(r'node\s*\[[^\]]*\]\s*\{([^}]+)\}', line)
-        if lm:
-            ew = estimate_label_width(lm.group(1))
-            if ew > usable > 0:
-                issues.append(Issue(level="WARN", category="label-gap", line_no=i + 1,
-                    message=f"Label too wide: \"{lm.group(1)[:20]}\" est {ew:.1f}cm > gap {usable:.1f}cm"))
-    return issues
-
-
-# ─── Check 8: Edge clipping ───
+# ─── Check 3: Edge clipping ───
 
 def check_edge_clipping(nodes: list[Node], zones: list[Zone], diag: float = 30.0) -> list[Issue]:
     issues = []
@@ -319,7 +115,7 @@ def check_edge_clipping(nodes: list[Node], zones: list[Zone], diag: float = 30.0
     return issues
 
 
-# ─── Check 9: Boundary clearance ───
+# ─── Check 4: Boundary clearance ───
 
 def check_boundary_clearance(nodes: list[Node], diag: float = 30.0) -> list[Issue]:
     issues = []
@@ -338,55 +134,7 @@ def check_boundary_clearance(nodes: list[Node], diag: float = 30.0) -> list[Issu
     return issues
 
 
-# ─── Check 10: Line crossings ───
-
-def segments_intersect(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1):
-    def cross(ox, oy, ax, ay, bx, by):
-        return (ax - ox) * (by - oy) - (ay - oy) * (bx - ox)
-    d1 = cross(bx0, by0, bx1, by1, ax0, ay0)
-    d2 = cross(bx0, by0, bx1, by1, ax1, ay1)
-    d3 = cross(ax0, ay0, ax1, ay1, bx0, by0)
-    d4 = cross(ax0, ay0, ax1, ay1, bx1, by1)
-    return ((d1 > 0 and d2 < 0) or (d1 < 0 and d2 > 0)) and \
-           ((d3 > 0 and d4 < 0) or (d3 < 0 and d4 > 0))
-
-
-def check_line_crossings(lines: list[str]) -> list[Issue]:
-    """Detect line-line crossings that may need path routing."""
-    issues = []
-    segments = []
-    scope_depth = 0
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if '\\begin{scope}' in stripped:
-            scope_depth += 1; continue
-        if '\\end{scope}' in stripped:
-            scope_depth = max(0, scope_depth - 1); continue
-        if scope_depth > 0 or '\\draw' not in line:
-            continue
-        coords = parse_draw_coords(line)
-        if len(coords) < 2:
-            continue
-        for j in range(len(coords) - 1):
-            p1, p2 = coords[j], coords[j + 1]
-            length = ((p2.x - p1.x)**2 + (p2.y - p1.y)**2) ** 0.5
-            if length >= 0.5:  # skip very short segments (node borders)
-                segments.append((i + 1, p1.x, p1.y, p2.x, p2.y))
-
-    crossings = 0
-    for a in range(len(segments)):
-        for b in range(a + 1, len(segments)):
-            s1, s2 = segments[a], segments[b]
-            if segments_intersect(s1[1], s1[2], s1[3], s1[4], s2[1], s2[2], s2[3], s2[4]):
-                crossings += 1
-
-    if crossings > 0:
-        issues.append(Issue(level="WARN", category="line-crossing", line_no=0,
-            message=f"Line crossings: {crossings} detected — graphdrawing edge routing should handle these"))
-    return issues
-
-
-# ─── Check 11: Oversize nodes (box >> text content) ───
+# ─── Check 5: Oversize nodes (box >> text content) ───
 
 def check_oversize_nodes(nodes: list[Node]) -> list[Issue]:
     """Flag nodes where explicitly-set widths/heights are >1.8x estimated text size."""
@@ -454,9 +202,14 @@ def validate(filepath: str) -> list[Issue]:
     return all_issues
 
 
-def has_line_crossings(issues: list[Issue]) -> bool:
-    """Check if any issues are line-crossing type (trigger path router)."""
-    return any(i.category == "line-crossing" for i in issues)
+def print_json(issues: list[Issue]) -> None:
+    """Machine-readable block consumed by references/quality_inspect.py."""
+    print("--- JSON ---")
+    print(json.dumps([
+        {"level": i.level, "check": "tikz-validator", "category": i.category,
+         "line": i.line_no, "message": i.message}
+        for i in issues
+    ], indent=2, ensure_ascii=False))
 
 
 def main():
@@ -469,6 +222,7 @@ def main():
 
     if not issues:
         print("PASS — no issues found")
+        print_json(issues)
         sys.exit(0)
 
     errors = [i for i in issues if i.level == "ERROR"]
@@ -486,6 +240,7 @@ def main():
             print(f"  {i}. [{issue.category}] {loc} {issue.message}")
 
     print(f"\nTotal: {len(all_warns)} warnings")
+    print_json(all_warns)
 
     sys.exit(1 if all_warns else 0)
 

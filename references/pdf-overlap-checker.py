@@ -12,6 +12,9 @@ PDF 重叠检测器 — 编译后自动检测渲染结果中的文字重叠问�
 退出码: 0=全部通过, 1=有警告, 2=有错误
 """
 
+from __future__ import annotations
+
+import json
 import sys
 from dataclasses import dataclass
 
@@ -466,6 +469,16 @@ def validate_pdf(filepath: str) -> list[Issue]:
     return all_issues
 
 
+def print_json(issues: list[Issue]) -> None:
+    """Machine-readable block consumed by references/quality_inspect.py."""
+    print("--- JSON ---")
+    print(json.dumps([
+        {"level": i.level, "check": "pdf-overlap-checker", "category": i.category,
+         "message": i.message}
+        for i in issues
+    ], indent=2, ensure_ascii=False))
+
+
 def main():
     if len(sys.argv) < 2:
         print("用法: python3 pdf-overlap-checker.py <file.pdf>")
@@ -475,7 +488,8 @@ def main():
     issues = validate_pdf(filepath)
 
     if not issues:
-        print("✅ PASS — 未发现重叠问题")
+        print("PASS — 未发现重叠问题")
+        print_json(issues)
         sys.exit(0)
 
     all_issues = issues  # all findings are WARN — model decides
@@ -490,6 +504,7 @@ def main():
 
     print(f"\n{'=' * 60}")
     print(f"Total: {len(all_issues)} warnings")
+    print_json(all_issues)
 
     sys.exit(1 if all_issues else 0)
 
