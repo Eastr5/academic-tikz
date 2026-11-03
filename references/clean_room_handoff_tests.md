@@ -7,7 +7,7 @@ Use these tests to verify the TikZ skill in a fresh agent session without relyin
 Task prompt:
 
 ```text
-Use $tikz-diagrams to create one standalone TikZ diagram for a business/economics teaching slide explaining parallel trends in difference-in-differences.
+Use $academic-tikz to create one standalone TikZ diagram for a business/economics teaching slide explaining parallel trends in difference-in-differences.
 
 Requirements:
 - choose `teaching` mode unless there is a reason not to
@@ -32,7 +32,7 @@ Expected behavior:
 Task prompt:
 
 ```text
-Use $tikz-diagrams to create a batch of three standalone TikZ diagrams for teaching econometrics:
+Use $academic-tikz to create a batch of three standalone TikZ diagrams for teaching econometrics:
 1. RDD threshold
 2. IV/LATE compliance types
 3. Event-study coefficients
@@ -82,7 +82,7 @@ Use this pattern when a researcher wants to iterate over one diagram with fine-g
 Task prompt:
 
 ```text
-Use $tikz-diagrams to create a researcher-style figure for a marketing analytics paper that asks for both a mediation DAG and effect estimates. Use the provided local example corpus as the quality baseline, if one is available. Apply the figure grammar budget and no-rendered-captions rule. Save versioned renders and a QA note with `complexity_review`.
+Use $academic-tikz to create a researcher-style figure for a marketing analytics paper that asks for both a mediation DAG and effect estimates. Use the provided local example corpus as the quality baseline, if one is available. Apply the figure grammar budget and no-rendered-captions rule. Save versioned renders and a QA note with `complexity_review`.
 ```
 
 Expected behavior:
@@ -98,7 +98,7 @@ Expected behavior:
 Task prompt:
 
 ```text
-Use $tikz-diagrams to critique and revise a finance feedback-loop figure. Render the initial attempt, inspect it, simplify redundant labels if needed, and save versioned PNGs/contact sheets for each inspected round.
+Use $academic-tikz to critique and revise a finance feedback-loop figure. Render the initial attempt, inspect it, simplify redundant labels if needed, and save versioned PNGs/contact sheets for each inspected round.
 ```
 
 Expected behavior:

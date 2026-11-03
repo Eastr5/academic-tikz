@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-tikz-figure-skill environment check + auto-install.
+academic-tikz environment check + auto-install.
 Detects platform, LaTeX, Python deps. Auto-installs what it can.
 Run once on skill startup.
 
@@ -10,12 +10,13 @@ Exit: 0=ready, 1=issues, 2=missing LaTeX (will not work)
 
 import os, sys, shutil, subprocess, platform as plat
 
-REQUIRED_LATEX = ["pdflatex"]
+REQUIRED_LATEX = ["xelatex", "pdflatex"]
 
 PY_DEPS = {
     "fitz": "pymupdf",        # PDF to PNG
     "pdfplumber": "pdfplumber",  # PDF overlap check
     "PIL": "Pillow",          # Image analysis
+    "numpy": "numpy",         # text/plot overlap check
 }
 
 LATEX_PKGS = [
@@ -47,17 +48,20 @@ def check_kpse(pkg):
 
 def main():
     errs = 0; warns = 0
-    print(f"{C_YEL}=== tikz-figure-skill Setup ==={C_RST}")
+    print(f"{C_YEL}=== academic-tikz Setup ==={C_RST}")
     print(f"Platform: {plat.system()} {plat.release()}")
     print()
 
-    # 1. LaTeX — dealbreaker
+    # 1. LaTeX — dealbreaker (one engine is enough; xelatex is the default)
     latex = [c for c in REQUIRED_LATEX if cmd_ok(c)]
     if not latex:
         print(f"{C_RED}[MISSING] No LaTeX engine. This skill will not work.{C_RST}")
         print(f"  Install: {latex_hint()}")
         sys.exit(2)
     print(f"{C_GRN}[OK]{C_RST} LaTeX: {', '.join(latex)}")
+    if "xelatex" not in latex:
+        print(f"{C_YEL}[WARN]{C_RST} xelatex missing — the default engine. Pass --engine pdflatex explicitly.")
+        warns += 1
 
     # 2. LaTeX packages — check kpsewhich first
     if cmd_ok("kpsewhich"):
@@ -78,12 +82,15 @@ def main():
         else:
             print(f"{C_YEL}[INSTALL]{C_RST} Python: {pip_name} ...", end=" ", flush=True)
             try:
-                subprocess.run([sys.executable, "-m", "pip", "install", pip_name, "-q"],
-                              capture_output=True, timeout=60)
+                proc = subprocess.run([sys.executable, "-m", "pip", "install", pip_name, "-q"],
+                              capture_output=True, text=True, timeout=60)
                 if pkg_ok(imp):
                     print(f"{C_GRN}OK{C_RST}")
                 else:
                     print(f"{C_RED}FAILED{C_RST}")
+                    if "externally-managed-environment" in (proc.stderr or ""):
+                        print("  PEP 668: use a venv and run the scripts with it:")
+                        print(f"    python3 -m venv .venv && .venv/bin/pip install {pip_name}")
                     errs += 1
             except:
                 print(f"{C_RED}FAILED (run: pip install {pip_name}){C_RST}")

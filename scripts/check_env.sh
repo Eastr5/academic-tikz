@@ -13,13 +13,14 @@ check() { # name  cmd  hint  [optional]
   fi
 }
 
-echo "TikZ scientific-figures toolchain:"
-check "pdflatex" pdflatex "LaTeX engine (required; or lualatex)"
+echo "academic-tikz toolchain:"
+check "xelatex"  xelatex  "LaTeX engine (default; CJK/Unicode safe)"
+check "pdflatex" pdflatex "fallback engine (--engine pdflatex)" optional
 check "dvisvgm"  dvisvgm  "TikZ -> SVG export (visual-edit channel)"
 check "mutool"   mutool   "PDF reader dvisvgm --pdf needs (mupdf-tools)"
 check "pdftoppm" pdftoppm "PDF -> PNG self-check preview (poppler)"
 check "latexmk"  latexmk  "optional — scripts fall back to running the engine twice" optional
-check "lualatex" lualatex "optional engine (pdflatex used if absent)" optional
+check "lualatex" lualatex "optional engine (xelatex is the default)" optional
 
 echo
 if [ "$ok" -eq 1 ]; then

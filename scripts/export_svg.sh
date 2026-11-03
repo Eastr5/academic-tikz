@@ -17,14 +17,25 @@ cd "$dir"
 # losing labels. Outlined text renders identically everywhere and round-trips
 # losslessly through the editor. The trade-off: labels become paths, not editable
 # text — but text edits belong in the .tex anyway (which stays the text source).
-engine="${TIKZ_ENGINE:-pdflatex}"; command -v "$engine" >/dev/null 2>&1 || engine="pdflatex"
+engine="${TIKZ_ENGINE:-xelatex}"
+if ! command -v "$engine" >/dev/null 2>&1; then
+  echo "WARN: $engine not found on PATH — falling back to pdflatex" >&2
+  engine="pdflatex"
+fi
 if command -v latexmk >/dev/null 2>&1; then
-  latexmk -"$engine" -interaction=nonstopmode -halt-on-error "$base.tex" >/dev/null
+  latexmk -"$engine" -no-shell-escape -interaction=nonstopmode -halt-on-error "$base.tex" >/dev/null
   latexmk -c "$base.tex" >/dev/null 2>&1 || true
 else
-  "$engine" -interaction=nonstopmode -halt-on-error "$base.tex" >/dev/null
+  # no latexmk (e.g. BasicTeX): run twice so references/labels settle.
+  "$engine" -no-shell-escape -interaction=nonstopmode -halt-on-error "$base.tex" >/dev/null
+  "$engine" -no-shell-escape -interaction=nonstopmode -halt-on-error "$base.tex" >/dev/null
   rm -f "$base.aux" "$base.log" "$base.out" "$base.fls" "$base.fdb_latexmk" 2>/dev/null || true
 fi
-dvisvgm --pdf --no-fonts --output="$base.svg" "$base.pdf" >/dev/null 2>&1
+if ! dvisvgm --pdf --no-fonts --output="$base.svg" "$base.pdf" >/dev/null; then
+  echo "ERROR: dvisvgm could not convert $base.pdf to SVG." >&2
+  echo "  dvisvgm --pdf needs Ghostscript < 10.01 or mutool (mupdf-tools) on PATH." >&2
+  rm -f "$base.svg"
+  exit 1
+fi
 touch "$base.svg.frozen"   # marker: this figure has forked to the SVG branch
 echo "$dir/$base.svg"

@@ -19,7 +19,7 @@ academic-tikz/
   SKILL.md              统一入口：资产路由、工作流、质量红线、命令速查
   scripts/              编译、检查、渲染、动画、SVG 编辑脚本
   references/           规范文档 + 检查器脚本
-    templates/          187 个模板（ML/UML/物理/化学/神经网络）
+    templates/          187 个模板（ML/UML/物理/化学/神经网络；22 个 UML 片段需包进文档）
   templates/            通用画布骨架（standalone、Beamer、经济学示意）
   assets/               出版级 preamble、standalone 模板、Method Draw 编辑器
   tests/                回归 fixtures
@@ -34,9 +34,10 @@ academic-tikz/
 
 ## 安装
 
-1. 把整个 `academic-tikz/` 目录放进所用 AI 工具的 skills 目录（如 Claude Code 的 `~/.claude/skills/`），重启对话。
-2. 装一次绘图引擎：LaTeX（MiKTeX / BasicTeX / TeX Live）与 poppler，各系统命令见 [使用说明.md](使用说明.md)。
-3. 环境自检：`bash scripts/check_env.sh`，或 `python3 scripts/check-env.py`。
+1. 把整个 `academic-tikz/` 目录放进所用 AI 工具的 skills 目录（如 Claude Code 的 `~/.claude/skills/`），重启对话；也可以运行 `bash install.sh`（Windows 用 `powershell -File install.ps1`）自动装到 `~/.claude/skills/academic-tikz`。
+2. 装一次绘图引擎：LaTeX（MiKTeX / BasicTeX / TeX Live）、poppler（`pdftoppm`，PDF→PNG），SVG 分支另需 mupdf（`mutool`）或 Ghostscript < 10.01；各系统命令见 [使用说明.md](使用说明.md)。
+3. Python 依赖：`bash setup.sh`（Windows 用 `powershell -File setup.ps1`），装到当前解释器；脚本要求 Python ≥ 3.9。
+4. 环境自检：`bash scripts/check_env.sh`，或 `python3 scripts/check-env.py`。
 
 ## 分工
 

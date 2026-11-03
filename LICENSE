@@ -2,6 +2,15 @@ MIT License
 
 Copyright (c) 2026 haiyichen
 
+Portions of this work come from third-party projects and keep their original
+terms:
+  - tikz-diagrams-skill (Patrick Healy)
+  - tikz-figure-skill (haiyichen)
+  - tikz-scientific-figures (PM-Shawn)
+  - templates under references/templates/, from janosh/diagrams and
+    petarv/tikz-diagrams (see README-templates.md for the source table)
+  - assets/method-draw/ is covered by assets/method-draw/LICENSE
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

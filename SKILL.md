@@ -22,8 +22,8 @@ description: >-
 
 | 任务 | 入口 | 资产 |
 |---|---|---|
-| ML/深度学习架构、Transformer、CNN、GNN、UML、神经网络示意 | 模板优先 | `references/templates/`（187 个已验证模板） |
-| 物理、化学、生物、电路、数学学科示意图 | 按学科取 recipe | `references/physics-recipes.md`、`chemistry-recipes.md`、`biology-recipes.md`、`circuitikz-recipes.md`、`math-recipes.md`、`cs-recipes.md`、`diagram-recipes.md` |
+| ML/深度学习架构、Transformer、CNN、GNN、UML、神经网络示意 | 模板优先 | `references/templates/`（187 个模板：165 个可直接编译，22 个 UML 片段需包进文档） |
+| 物理、化学、生物、电路、数学学科示意图 | 按学科取 recipe | `references/physics-recipes.md`、`references/chemistry-recipes.md`、`references/biology-recipes.md`、`references/circuitikz-recipes.md`、`references/math-recipes.md`、`references/cs-recipes.md`、`references/diagram-recipes.md` |
 | 因果 DAG、经济学/金融机制、供需与阈值曲线、研究流程、教学图 | 图族 + 通用模板 | `references/diagram_patterns.md`、`references/business_economics_patterns.md`、`templates/` |
 | CSV 驱动的数据图（折线/散点/柱/直方/箱线/热图/等高/3D/对数） | recipe | `references/pgfplots-recipes.md`、`references/pgfplots-templates.md` |
 | 多面板论文配图 (a)(b)(c)、插图、显著性标记、拟合与置信带 | 组图规范 | `references/figure-composition.md` |
@@ -45,19 +45,19 @@ description: >-
 3. **起手文件**：通用示意图用 `templates/standalone.tex`（Beamer 用 `templates/beamer_16x9.tex`）；出版级图用 `assets/standalone-template.tex` + `assets/preamble.tex`，保留文件顶部的 `TUNABLES` 块，便于后续手工调整。
 4. **数据外置**：数据图的数值放外部 `data.csv`，改图优先改数据文件而不是改 TikZ。
 5. **写短标签**：长解释放图外（caption、讲稿、QA 记录、回复正文）。默认不把 caption 式散文渲进图内。
-6. **编译**：默认 XeLaTeX，两次编译，禁用 shell escape 与自动宏包安装。
+6. **编译**：默认 XeLaTeX，两次编译，禁用 shell escape（宏包自动安装由本地 TeX 发行版决定）。
    ```bash
    python3 scripts/compile_render.py figure.tex            # 编译 + 渲染 PNG
    bash scripts/compile.sh figure.tex                      # 只要裁边 PDF（TIKZ_ENGINE 换引擎）
    ```
-   需要其他引擎用 `--engine pdflatex`（或 `TIKZ_ENGINE=xelatex bash scripts/compile.sh figure.tex`）；SVG 导出走 `scripts/export_svg.sh`；已存在输出默认拒绝覆盖，确认是本轮修订后再覆盖。
+   需要其他引擎用 `--engine pdflatex`（或 `TIKZ_ENGINE=pdflatex bash scripts/compile.sh figure.tex`）；两个入口都固定编译两遍并传 `-no-shell-escape`。SVG 导出走 `scripts/export_svg.sh`；已存在输出默认拒绝覆盖，确认是本轮修订后再覆盖。
 7. **检查**：编译前跑静态检查；编译后跑渲染视觉检查。两者可按需选一套。
    ```bash
    python3 scripts/check_tikz_safety.py figure.tex
    python3 scripts/compile_render.py figure.tex --visual-check --visual-mode research
-   python3 references/inspect.py output.tex output.pdf
+   python3 references/quality_inspect.py output.tex output.pdf
    ```
-   `inspect.py` 输出 15 项 WARN，不修改文件、不判 PASS/FAIL。逐项判断：模板原本就带的 WARN 属于设计意图，跳过；适配编辑后新出现的 WARN 属于缺陷，修掉。
+   `quality_inspect.py` 汇总 15 项检查，不修改文件。正常时全部是 WARN，逐项判断：模板原本就带的 WARN 属于设计意图，跳过；适配编辑后新出现的 WARN 属于缺陷，修掉。任一检查器无法运行时它会打印 `FAILED SENSORS` 并以退出码 2 结束——此时结论不完整，不能当作通过。
 8. **目视检查**：实际打开渲染出的 PNG，看文字重叠、标签裁切、空白输出、文字拥挤、版面适配、箭头语义、模型逻辑。自动检查不能替代这一步。
 9. **修复循环**：读准报错或 QA 结果，只改最小源区域，重跑失败的那一项检查，从当前源码继续而不是重写整张图。同类失败连续两次后，改走简化、拆分或重设计。普通单图首渲染后只做一轮聚焦修复；除非有严重缺陷（重叠、裁切、不可读、空白、语义错误、版面明显失配）才继续。
 10. **交付**：`.tex` + `.pdf` + `.png`（数据图另附数据文件）。批量任务附 contact sheet 与简短 QA 记录。动画另附帧预览。
@@ -85,7 +85,7 @@ description: >-
 | 编译 + 渲染 + 视觉 QA | `python3 scripts/compile_render.py figure.tex --visual-check --visual-mode research` |
 | 图上标签压线细查 | 加 `--text-plot-overlap`，可用 `--plot-label-regex` 指定标签文本 |
 | 检查已有 PDF | `python3 scripts/check_tikz_visual.py figure.pdf --mode teaching --report qa.json` |
-| 15 项布局检查 | `python3 references/inspect.py output.tex output.pdf` |
+| 15 项布局检查 | `python3 references/quality_inspect.py output.tex output.pdf` |
 | 批量 contact sheet | `python3 scripts/make_contact_sheet.py path/to/pngs --output sheet.png --show-qa` |
 | 受控图序列 | `python3 scripts/render_tikz_series.py series_manifest.json` |
 | 动画帧预览 | `python3 scripts/render_animation_preview.py frames.pdf --fps 8 --key-frames 1,10,20` |

@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
-# tikz-figure-skill: local dependency install
-# Installs Python packages into skill's vendor/ directory (no system changes)
+# academic-tikz: local dependency install
+# Installs into the same interpreter that runs the skill scripts (no venv),
+# matching scripts/check-env.py so the packages are actually importable.
 
 set -e
-DIR="$(cd "$(dirname "$0")" && pwd)"
-VENV="$DIR/.venv"
 
-echo "=== tikz-figure-skill setup ==="
+echo "=== academic-tikz setup ==="
 
-# Create local venv if not exists
-if [ ! -d "$VENV" ]; then
-    python3 -m venv "$VENV"
-    echo "Created local venv: $VENV"
+PYTHON=python3
+command -v "$PYTHON" >/dev/null 2>&1 || PYTHON=python
+
+if ! "$PYTHON" -m pip install -q pymupdf pdfplumber Pillow numpy; then
+    echo "ERROR: pip install failed." >&2
+    echo "  PEP 668 systems (Ubuntu 24.04+/Debian 12/Homebrew): use a venv and run scripts with it:" >&2
+    echo "    python3 -m venv .venv && .venv/bin/pip install pymupdf pdfplumber Pillow numpy" >&2
+    echo "    (or pass --break-system-packages if you accept modifying the system environment)" >&2
+    exit 1
 fi
-
-# Activate and install
-source "$VENV/bin/activate" 2>/dev/null || source "$VENV/Scripts/activate" 2>/dev/null
-pip install -q pymupdf pdfplumber Pillow
+"$PYTHON" -c 'import sys; print("Dependencies installed into", sys.executable)'
+echo "Optional, only for references/figure-diff.py: pip install opencv-python scikit-image"
 
 echo ""
-echo "Dependencies installed into skill directory."
 echo "Only LaTeX needs manual install:"
 echo "  macOS: brew install --cask mactex-no-gui"
 echo "  Linux: sudo apt install texlive-latex-recommended"

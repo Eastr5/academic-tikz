@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Shared .tex parser for tikz-figure-skill tools.
+Shared .tex parser for academic-tikz tools.
 Extracts nodes, zones, connections, and coordinates from TikZ source.
 
 Used by: tikz-validator.py, layout-engine.py, pdf-overlap-checker.py

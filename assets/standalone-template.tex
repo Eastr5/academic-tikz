@@ -25,7 +25,7 @@
     legend pos=north east,
 ]
 % data lives in an external file so editing = editing the .csv
-% expected columns:  x  y
+% expected columns:  x  y   (data.csv ships with sample rows — replace them)
 \addplot table[x index=0, y index=1] {data.csv};
 \addlegendentry{measured}
 \end{axis}

@@ -15,7 +15,7 @@ error is usually the FIRST `!` line, not the last line of output.
 | circuitikz: `Unknown bipole` | wrong `to[X]` key | check key in circuitikz-recipes.md table |
 | compiles but PDF is huge/blank margins | not using `standalone` crop | use `\documentclass[border=2pt]{standalone}` |
 | `dvisvgm ERROR: can't retrieve number of pages from file` | `--pdf` route needs mutool | `brew install mupdf-tools` |
-| `! LaTeX Error: File 'luatex85.sty' not found` | engine is lualatex on BasicTeX | use pdflatex (scripts default to it); or `tlmgr install luatex85` |
+| `! LaTeX Error: File 'luatex85.sty' not found` | engine is lualatex on BasicTeX | compile with `--engine pdflatex`; or `tlmgr install luatex85` |
 
 ## Self-check loop (always do this)
 1. `compile.sh figure.tex` → if it errors, read `figure.log`, fix, repeat.
